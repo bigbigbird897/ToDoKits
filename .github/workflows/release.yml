@@ -104,4 +104,7 @@ jobs:
             ToDoKits-win-x64.zip
             ToDoKits-linux-x64.zip
             ToDoKits-frontend-www.zip
-          generate_release_notes: true
+          # 关闭自动生成 release notes：其内部会调用 generate-notes API，
+          # 对 GITHUB_TOKEN 报 403 (Resource not accessible by integration)。
+          # 仅创建 Release + 上传产物，需 contents: write（workflow 已声明）。
+          generate_release_notes: false
