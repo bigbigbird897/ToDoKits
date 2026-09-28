@@ -18,6 +18,18 @@ jobs:
         with:
           submodules: true
           fetch-depth: 0
+      - name: 检出前端到 release-tags.json 指定 tag
+        shell: bash
+        run: |
+          cd ..
+          tag=$(jq -r '.FrontEnd // empty' release-tags.json)
+          if [ -n "$tag" ]; then
+            git -C FrontEnd fetch --tags --force origin
+            git -C FrontEnd checkout -f "$tag"
+            echo "FrontEnd -> $tag"
+          else
+            echo "release-tags.json 未配置 FrontEnd tag，保持子模块 gitlink"
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -46,6 +58,18 @@ jobs:
         with:
           submodules: true
           fetch-depth: 0
+      - name: 检出后端到 release-tags.json 指定 tag
+        shell: bash
+        run: |
+          cd ..
+          tag=$(jq -r '.BackEnd // empty' release-tags.json)
+          if [ -n "$tag" ]; then
+            git -C BackEnd fetch --tags --force origin
+            git -C BackEnd checkout -f "$tag"
+            echo "BackEnd -> $tag"
+          else
+            echo "release-tags.json 未配置 BackEnd tag，保持子模块 gitlink"
+          fi
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
