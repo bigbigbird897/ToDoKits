@@ -74,7 +74,8 @@ jobs:
         with:
           pattern: '*'
           path: artifacts
-          merge-multiple: true
+          # 关闭 merge-multiple：保留各 artifact 独立子目录（frontend-dist / backend-linux-x64 / backend-win-x64），
+          # 否则所有产物被压平到 artifacts/ 根，后续 cp artifacts/backend-win-x64/* 会因目录不存在而失败
       - name: 组装单包（后端 + 前端）
         run: |
           set -e
