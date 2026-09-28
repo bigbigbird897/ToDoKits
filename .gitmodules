@@ -1,6 +1,6 @@
 [submodule "FrontEnd"]
 	path = FrontEnd
-	url = ./FrontEnd
+	url = https://github.com/bigbigbird897/ToDoKitsFrontEnd.git
 [submodule "BackEnd"]
 	path = BackEnd
-	url = ./BackEnd
+	url = https://github.com/bigbigbird897/ToDoKitsBackEnd.git
