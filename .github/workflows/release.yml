@@ -104,7 +104,9 @@ jobs:
             ToDoKits-win-x64.zip
             ToDoKits-linux-x64.zip
             ToDoKits-frontend-www.zip
-          # 关闭自动生成 release notes：其内部会调用 generate-notes API，
-          # 对 GITHUB_TOKEN 报 403 (Resource not accessible by integration)。
-          # 仅创建 Release + 上传产物，需 contents: write（workflow 已声明）。
+          # 优先使用仓库 Secret GH_TOKEN（有 contents: write 的 PAT）；未配置时退回 GITHUB_TOKEN。
+          # GITHUB_TOKEN 创建 Release 被 403 (Resource not accessible by integration) 时，
+          # 需在仓库 Settings -> Actions -> General -> Workflow permissions 开启 Read and write。
+          token: ${{ secrets.GH_TOKEN || github.token }}
+          # 关闭自动生成 release notes（generate-notes API 对 GITHUB_TOKEN 同样 403）。
           generate_release_notes: false
