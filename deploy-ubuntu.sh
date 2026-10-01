@@ -42,10 +42,11 @@ if command -v ufw >/dev/null 2>&1; then
   # ufw disable
   ufw allow 9510/tcp   # 前端入口端口
   ufw allow 9610/tcp   # 后端 API 端口（仅本机，Nginx 代理用）
+  ufw allow 9611/tcp   # 后端 API 端口（仅本机，Nginx 代理用）
   echo "已放行 9510 / 9610 端口"
 fi
 # 兜底：清空 iptables 规则（不持久，重启后恢复，ufw 已足够）
-iptables -F 2>/dev/null || true
+# iptables -F 2>/dev/null || true
 
 # ============================================================
 # 2/5 安装并配置 Nginx
