@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工作笔记 · 静态预览 v4</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232E7D6B'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='white'%3E笔%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.7.8/dist/index.css">
+<style>
+  /* ===== 与 ToDoKits 前端一致的暖纸色主题 ===== */
+  :root {
+    --el-color-primary: #2E7D6B;
+    --el-color-primary-light-3: #5f9e8c;
+    --el-color-primary-light-5: #8db8a9;
+    --el-color-primary-light-7: #bcd6cb;
+    --el-color-primary-light-8: #d3e6de;
+    --el-color-primary-light-9: #e5f0ec;
+    --el-color-primary-dark-2: #25685a;
+    --el-font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --td-bg: #f6f4ef; --td-card: #fff; --td-text: #26282a; --td-muted: #6e7377; --td-border: #e6e2d9;
+    --lk-soft: 0 1px 3px rgba(38,40,42,.05), 0 6px 18px rgba(38,40,42,.06);
+    --lk-hover: 0 4px 12px rgba(46,125,107,.14), 0 14px 30px rgba(46,125,107,.16);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--td-bg); color: var(--td-text); font-family: var(--el-font-family); }
+  .page { max-width: 1200px; margin: 0 auto; padding: 22px 20px 40px; }
+  .view-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+  .page-title { font-size: 20px; font-weight: 600; }
+  .page-desc { font-size: 13px; color: var(--td-muted); margin-top: 3px; }
+  .workspace { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 768px) { .workspace { grid-template-columns: 1fr; } }
+  .card { background: var(--td-card); border: 1px solid var(--td-border); border-radius: 12px; box-shadow: var(--lk-soft); overflow: hidden; transition: box-shadow .25s; }
+  .card:hover { box-shadow: var(--lk-hover); }
+  .card-head { padding: 12px 16px; border-bottom: 1px solid var(--td-border); font-weight: 600; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+  .card-body { padding: 12px 14px; }
+  .breadcrumb { padding: 0 14px 12px; font-size: 14px; color: var(--td-muted); }
+  .breadcrumb .crumb { cursor: pointer; color: var(--el-color-primary); }
+  .breadcrumb .sep { margin: 0 6px; color: #c4c0b6; }
+  /* ===== 左侧树 ===== */
+  .tree-zone { max-height: 560px; overflow-y: auto; }
+  .tree-node-row { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 7px 6px; border-radius: 8px; font-size: 14px; color: var(--td-text); }
+  .tree-node-row:hover { background: #efece4; }
+  .tree-node-row.active { background: var(--el-color-primary-light-9); color: var(--el-color-primary-dark-2); font-weight: 600; }
+  .tree-caret { width: 16px; height: 18px; align-self: flex-start; display: flex; align-items: center; justify-content: center; color: #aaa; flex-shrink: 0; transition: transform .2s; }
+  .tree-caret.open { transform: rotate(90deg); }
+  .tree-caret.empty { visibility: hidden; }
+  .tree-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tree-count { color: var(--td-muted); font-size: 12px; flex-shrink: 0; }
+  .tree-fops { display: flex; gap: 2px; opacity: 0; flex-shrink: 0; transition: opacity .15s; }
+  .tree-node-row:hover .tree-fops { opacity: 1; }
+  /* ===== 右侧列表 ===== */
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 12px; }
+  .cur-tag { font-size: 12px; color: var(--td-muted); font-weight: 400; }
+  .file-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #f0ede5; cursor: pointer; border-radius: 8px; }
+  .file-row:hover { background: #f2f7f4; }
+  .file-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .file-icon.folder { background: #fff2cc; color: #e6a23c; }
+  .file-icon.txt { background: #e8f4ff; color: #409eff; }
+  .file-icon.md { background: #eafbea; color: #67c23a; }
+  .file-main { flex: 1; min-width: 0; }
+  .file-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-meta { font-size: 12px; color: var(--td-muted); }
+  .file-ops { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity .2s; }
+  .file-row:hover .file-ops { opacity: 1; }
+  /* 行内操作按钮：透明底 + 浅 hover，确保文字始终可读 */
+  .file-ops .el-button, .tree-fops .el-button { background: transparent !important; padding: 3px 6px; border-radius: 6px; }
+  .file-ops .el-button:hover, .tree-fops .el-button:hover { background: var(--el-color-primary-light-9) !important; }
+  .file-ops .el-button.is-danger, .tree-fops .el-button.is-danger { color: #d64545; }
+  .file-ops .el-button.is-danger:hover, .tree-fops .el-button.is-danger:hover { background: #fdecec !important; }
+  .file-ops .el-button.is-primary, .tree-fops .el-button.is-primary { color: #25685a; }
+  .file-badge { font-size: 11px; padding: 1px 6px; border-radius: 999px; color: #fff; flex-shrink: 0; }
+  .file-badge.t { background: #409eff; } .file-badge.m { background: #67c23a; }
+  .empty { text-align: center; color: var(--td-muted); padding: 40px 0; font-size: 14px; }
+  .note { font-size: 12px; color: #b0a88f; margin-top: 14px; text-align: center; }
+  /* ===== 预览/编辑 ===== */
+  .md-body { font-size: 14px; line-height: 1.75; max-height: 72vh; overflow-y: auto; padding-right: 4px; }
+  .md-body h1,.md-body h2,.md-body h3 { margin: 10px 0 6px; }
+  .md-body pre { background: #f6f4ef; padding: 10px; border-radius: 8px; overflow: auto; font-size: 12px; }
+  .md-body code { background: #f6f4ef; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .md-body ul,.md-body ol { padding-left: 22px; }
+  .md-body blockquote { border-left: 3px solid #ddd; padding-left: 10px; color: #777; margin: 6px 0; }
+  .txt-body { white-space: pre-wrap; font-size: 13px; line-height: 1.85; color: #4a4a4a; max-height: 72vh; overflow-y: auto; }
+  .edit-hint { font-size: 12px; color: var(--td-muted); margin-top: 6px; }
+  /* ===== 内容视图：占满右侧卡片，而非小弹窗 ===== */
+  .content-view { display: flex; flex-direction: column; min-height: 62vh; }
+  .content-bar { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid #f0ede5; }
+  .content-meta { font-size: 12px; color: var(--td-muted); }
+  .content-title span { font-weight: 600; }
+  .content-title .el-tag { margin-left: 8px; }
+  .content-body { flex: 1; margin-top: 14px; }
+  .content-body .md-body, .content-body .txt-body { max-height: none; height: calc(100vh - 320px); min-height: 420px; }
+  .content-body .edit-area textarea, .content-body .edit-area .el-textarea__inner { font-family: "Noto Serif SC", Georgia, "Songti SC", serif; font-size: 15px; line-height: 1.9; min-height: calc(100vh - 340px); }
+  .spacer { flex: 1; }
+  .suffix-hint { font-size: 12px; color: var(--td-muted); margin-top: 8px; }
+  /* Element Plus 细节与前端一致 */
+  .el-card { border: 1px solid var(--td-border); border-radius: 12px; box-shadow: var(--lk-soft); }
+  .el-button { border-radius: 8px; font-weight: 500; transition: all .2s ease; }
+  .el-button--primary:not(.is-plain) { background: var(--el-color-primary); border-color: var(--el-color-primary); box-shadow: 0 2px 8px rgba(46,125,107,.25); }
+  .el-button--primary:not(.is-plain):hover { background: var(--el-color-primary-dark-2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(46,125,107,.3); }
+  .el-button--primary.is-plain { background: var(--el-color-primary-light-9); border-color: var(--el-color-primary-light-5); color: var(--el-color-primary); }
+  .el-input__wrapper, .el-textarea__inner { background: #fff; box-shadow: 0 0 0 1px var(--td-border) inset; border-radius: 8px; }
+  .el-input__wrapper.is-focus, .el-textarea__inner:focus { box-shadow: 0 0 0 1px var(--el-color-primary) inset, 0 0 0 3px rgba(46,125,107,.12); }
+  .el-dialog { border-radius: 14px; box-shadow: 0 1px 3px rgba(38,40,42,.06), 0 8px 24px rgba(38,40,42,.08); }
+  @media (max-width: 640px) { .page-desc,.breadcrumb,.tree-node-row,.file-name,.file-meta { font-size: 14px; } body { font-size: 16px; } .el-input__inner,.el-textarea__inner { font-size: 16px !important; } }
+</style>
+</head>
+<body>
+<div id="app" v-cloak style="display:none">
+  <div class="page">
+    <div class="view-head">
+      <div>
+        <div class="page-title">工作笔记</div>
+        <div class="page-desc">左侧管理文件夹，文件在所在文件夹内增删改查，支持 txt / md 在线查看与编辑。</div>
+      </div>
+      <div><el-button plain @click="toast('已刷新（静态预览，数据在内存）')">刷新</el-button></div>
+    </div>
+
+    <div class="workspace">
+      <div class="card">
+        <div class="card-head">
+          <span>文件夹</span>
+          <el-button size="small" type="primary" plain @click="newSub(null)">新建</el-button>
+        </div>
+        <div class="card-body">
+          <el-input v-model="folderQuery" placeholder="搜索文件夹…" clearable style="margin-bottom:8px"></el-input>
+          <div class="tree-zone">
+            <div v-for="f in visibleFolders" :key="f.key" class="tree-node-row"
+                 :class="{active: f.active}" :style="{'padding-left': (6 + f.level*18) + 'px'}">
+              <span class="tree-name" @click="enter(f.pathArr)">{{ f.node.name }}</span>
+              <span class="tree-count">（{{ f.node.files.length }}）</span>
+              <span class="tree-fops" @click.stop>
+                <el-button link size="small" title="新建子文件夹" @click="newSub(f.node)">+</el-button>
+                <el-button link size="small" title="重命名" @click="renameFolder(f.node)">改</el-button>
+                <el-button link type="danger" size="small" title="删除" @click="delFolder(f.node, f.pathArr)">删</el-button>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div v-if="contentMode==='list'">
+            <span>当前文件夹</span>
+            <span class="cur-tag"> — {{ path.join(' / ') }}</span>
+          </div>
+          <div v-else class="content-title">
+            <span>{{ contentFile ? contentFile.name : '' }}</span>
+            <el-tag v-if="contentFile" size="small" effect="plain" :class="contentFile.type">{{ (contentFile.type||'').toUpperCase() }}</el-tag>
+          </div>
+          <div>
+            <el-tag v-if="contentMode==='list'" size="small" effect="plain">{{ items }} 项</el-tag>
+            <el-button v-else size="small" @click="backToList">返回列表</el-button>
+          </div>
+        </div>
+        <div class="card-body">
+          <template v-if="contentMode==='list'">
+          <div class="breadcrumb">
+            <template v-for="(c,i) in path" :key="c">
+              <span class="sep" v-if="i>0">/</span>
+              <span class="crumb" @click="enter(path.slice(0,i+1))">{{ c }}</span>
+            </template>
+          </div>
+          <div class="toolbar">
+            <el-button type="primary" @click="newSub(null)">新建文件夹</el-button>
+            <el-button type="primary" plain @click="openCreateFile">新建文件</el-button>
+            <el-button plain @click="triggerUpload">上传文件</el-button>
+            <el-button plain @click="triggerUploadFolder">上传文件夹</el-button>
+            <input ref="fileInput" type="file" multiple hidden @change="onPickFiles">
+          </div>
+          <div v-if="!items" class="empty">该文件夹为空：新建文件夹 / 新建文件 / 上传，或从左侧进入其它文件夹</div>
+          <template v-else>
+            <div class="file-row" v-for="fd in folderItems" :key="'f'+fd.name" @click="enter([...path, fd.name])">
+              <div class="file-main">
+                <div class="file-name">{{ fd.name }}</div>
+                <div class="file-meta">文件夹 · {{ fd.files.length }} 个文件 · {{ fd.time }}</div>
+              </div>
+              <div class="file-ops" @click.stop>
+                <el-button link type="primary" size="small" @click="enter([...path, fd.name])">打开</el-button>
+                <el-button link type="primary" size="small" @click="renameFolder(fd)">重命名</el-button>
+                <el-button link type="danger" size="small" @click="delFolder(fd, [...path, fd.name])">删除</el-button>
+              </div>
+            </div>
+            <div class="file-row" v-for="fl in fileItems" :key="'x'+fl.name" @click="openPreview(fl)">
+              <span class="file-badge" :class="fl.type==='md'?'m':'t'">{{ fl.type==='md'?'MD':'TXT' }}</span>
+              <div class="file-main">
+                <div class="file-name">{{ fl.name }}</div>
+                <div class="file-meta">{{ fl.size }} · {{ fl.time }}</div>
+              </div>
+              <div class="file-ops" @click.stop>
+                <el-button link type="primary" size="small" @click="openPreview(fl)">查看</el-button>
+                <el-button link type="primary" size="small" @click="openEdit(fl)">编辑</el-button>
+                <el-button link type="primary" size="small" @click="renameFile(fl)">重命名</el-button>
+                <el-button link type="primary" size="small" @click="openMove(fl)">移动</el-button>
+                <el-button link @click="download(fl)">下载</el-button>
+                <el-button link type="danger" size="small" @click="delFile(fl)">删除</el-button>
+              </div>
+            </div>
+          </template>
+          </template>
+
+          <div v-else-if="contentMode==='view'" class="content-view">
+            <div class="content-bar">
+              <span class="content-meta">{{ contentFile ? contentFile.size + ' · ' + contentFile.time : '' }}</span>
+              <div class="spacer"></div>
+              <el-button plain @click="openEditFromView">编辑</el-button>
+              <el-button type="primary" @click="download(contentFile)">下载</el-button>
+            </div>
+            <div class="content-body">
+              <div class="md-body" v-if="contentFile && contentFile.type==='md'" v-html="renderMd(contentFile.content)"></div>
+              <div class="txt-body" v-else-if="contentFile && contentFile.type==='txt'">{{ contentFile.content }}</div>
+            </div>
+          </div>
+
+          <div v-else class="content-view">
+            <div class="content-bar">
+              <span class="content-meta">编辑中</span>
+              <div class="spacer"></div>
+              <el-button @click="backToList">取消</el-button>
+              <el-button type="primary" @click="saveEdit">保存</el-button>
+            </div>
+            <div class="content-body edit">
+              <el-input v-model="editContent" type="textarea" class="edit-area" placeholder="在此编辑内容" @keydown.tab.prevent="onTabKey"></el-input>
+            </div>
+            <div class="edit-hint">提示：按 Tab 键插入 4 空格缩进</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">※ 静态预览：数据保存在内存中，用于确认「工作笔记」的布局与交互。通过后再接入前后端。</div>
+
+    <!-- 新建文件夹 -->
+    <el-dialog v-model="dlgFolder.show" title="新建文件夹" width="380px">
+      <el-input v-model="dlgFolder.name" placeholder="文件夹名称" @keyup.enter="confirmFolder"/>
+      <div class="suffix-hint">将创建在：{{ dlgFolder.parentLabel }}</div>
+      <template #footer>
+        <el-button @click="dlgFolder.show=false">取消</el-button>
+        <el-button type="primary" @click="confirmFolder">创建</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 新建文件（可指定后缀） -->
+    <el-dialog v-model="dlgFile.show" title="新建文件" width="420px">
+      <el-input v-model="dlgFile.name" placeholder="文件名（可含后缀，如 会议纪要.md）" @keyup.enter="confirmFile"/>
+      <el-radio-group v-model="dlgFile.type" style="margin-top:12px">
+        <el-radio label="txt">TXT 纯文本</el-radio>
+        <el-radio label="md">Markdown</el-radio>
+      </el-radio-group>
+      <div class="suffix-hint">直接输入后缀（.txt / .md）会按输入为准；未输入后缀时自动补全为 xxx.{{ dlgFile.type }}</div>
+      <template #footer>
+        <el-button @click="dlgFile.show=false">取消</el-button>
+        <el-button type="primary" @click="confirmFile">创建</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 重命名 -->
+    <el-dialog v-model="dlgRename.show" :title="dlgRename.kind==='folder'?'重命名文件夹':'重命名文件'" width="380px">
+      <el-input v-model="dlgRename.name" placeholder="新名称" @keyup.enter="confirmRename"/>
+      <template #footer>
+        <el-button @click="dlgRename.show=false">取消</el-button>
+        <el-button type="primary" @click="confirmRename">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 移动文件 -->
+    <el-dialog v-model="dlgMove.show" title="移动文件到" width="400px">
+      <el-select v-model="dlgMove.target" placeholder="选择目标文件夹" style="width:100%">
+        <el-option label="全部文件（根目录）" value="全部文件"/>
+        <el-option v-for="f in allFolders" :key="f" :label="f" :value="f"/>
+      </el-select>
+      <template #footer>
+        <el-button @click="dlgMove.show=false">取消</el-button>
+        <el-button type="primary" @click="confirmMove">移动</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-plus@2.7.8/dist/index.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>
+<script>
+const { createApp, ref, computed, reactive } = Vue;
+const { ElMessage, ElMessageBox } = ElementPlus;
+
+const root = {
+  name: '全部文件', time: '—', folders: [
+    { name: '工作', time: '2026-10-07', folders: [
+        { name: '项目A', time: '2026-10-06', folders: [], files: [
+          { name: '接口设计.md', type: 'md', size: '4.5 KB', time: '2026-10-06 10:00', content: '# 接口设计\n\n- POST /api/notes/folder\n- POST /api/notes/file\n- GET  /api/notes/list' },
+          { name: '排期表.txt', type: 'txt', size: '0.3 KB', time: '2026-10-02 09:00', content: '10.07 静态预览\n10.08 前端界面\n10.09 后端接口\n10.10 联调' }
+        ] }
+      ], files: [
+        { name: '需求文档.md', type: 'md', size: '3.2 KB', time: '2026-10-05 14:10', content: '# 需求文档\n\n## 功能清单\n- 待办事项 CRUD\n- 数据统计\n- 工作笔记：文件夹 / 文件管理' },
+        { name: '会议记录.txt', type: 'txt', size: '0.8 KB', time: '2026-10-04 11:00', content: '周会记录：\n- 讨论工作笔记静态原型\n- 确认支持 txt / md' }
+      ] },
+    { name: '个人', time: '2026-10-03', folders: [], files: [
+        { name: '读书笔记.md', type: 'md', size: '2.1 KB', time: '2026-10-03 22:15', content: '# 读书笔记\n\n正在读《设计心理学》。\n\n要点：\n- 可见性\n- 反馈\n- 心智模型' }
+      ] }
+  ], files: [
+    { name: '项目启动会纪要.md', type: 'md', size: '1.6 KB', time: '2026-10-07 09:30', content: '# 项目启动会纪要\n\n## 参与人\n- 张三、李四、王五\n\n## 结论\n> 本周完成需求评审，下周进入开发。\n\n```\n阶段：需求 -> 设计 -> 开发\n```' },
+    { name: '待办清单.txt', type: 'txt', size: '0.4 KB', time: '2026-10-06 18:20', content: '1. 更新部署脚本\n2. 修复登录暗色主题\n3. 整理工作笔记需求\n4. 写周报' }
+  ]
+};
+
+function findNode(pathArr) { let node = root; for (let i = 1; i < pathArr.length; i++) { node = (node.folders || []).find(f => f.name === pathArr[i]); if (!node) return null; } return node; }
+function allFolderPaths(node, base) { const out = []; (node.folders || []).forEach(f => { const p = base + '/' + f.name; out.push(p); if (f.folders && f.folders.length) out.push(...allFolderPaths(f, p)); }); return out; }
+const ALL_FOLDERS = allFolderPaths(root, '全部文件');
+
+const app = createApp({
+  setup() {
+    const path = ref(['全部文件']);
+    const cur = computed(() => findNode(path.value));
+    const isRoot = computed(() => path.value.length === 1);
+    const items = computed(() => (cur.value.folders?.length || 0) + (cur.value.files?.length || 0));
+    const folderItems = computed(() => (cur.value.folders || []).map(f => ({ name: f.name, time: f.time, files: f.files })));
+    const fileItems = computed(() => cur.value.files || []);
+    const allFolders = computed(() => ALL_FOLDERS.filter(p => p !== path.value.join('/')));
+
+    const expanded = reactive(new Set());
+    const folderQuery = ref('');
+    function hasMatch(node, q) { if ((node.name || '').includes(q)) return true; return (node.folders || []).some(c => hasMatch(c, q)); }
+    const visibleFolders = computed(() => {
+      const q = folderQuery.value.trim(); const out = [];
+      if (!q) {
+        function walk(node, pathArr, level) { (node.folders || []).forEach(f => { const fpath = [...pathArr, f.name]; const hc = (f.folders && f.folders.length) > 0; out.push({ node: f, pathArr: fpath, level, hasChildren: hc, open: expanded.has(fpath.join('/')), active: path.value.join('/') === fpath.join('/'), key: fpath.join('/') }); if (expanded.has(fpath.join('/')) && hc) walk(f, fpath, level + 1); }); }
+        walk(root, ['全部文件'], 1);
+      } else {
+        function matchWalk(node, pathArr, level) { (node.folders || []).forEach(f => { const fpath = [...pathArr, f.name]; const selfHit = (f.name || '').includes(q); const childHit = (f.folders || []).some(c => hasMatch(c, q)); if (selfHit || childHit) { out.push({ node: f, pathArr: fpath, level, hasChildren: (f.folders && f.folders.length) > 0, open: true, active: path.value.join('/') === fpath.join('/'), key: fpath.join('/') }); if (childHit) matchWalk(f, fpath, level + 1); } }); }
+        matchWalk(root, ['全部文件'], 1);
+      }
+      return out;
+    });
+
+    function enter(p) { path.value = Array.isArray(p) ? p.slice() : p; }
+    function toggle(node) { const k = folderPath(node); if (expanded.has(k)) expanded.delete(k); else expanded.add(k); }
+    function folderPath(node) { function find(n, base) { if (n.folders) { const i = n.folders.indexOf(node); if (i >= 0) return [...base, node.name]; for (const c of n.folders) { const r = find(c, [...base, c.name]); if (r) return r; } } return null; } return find(root, ['全部文件']) || ['全部文件']; }
+
+    // 文件夹增删改查
+    const dlgFolder = reactive({ show: false, name: '', parent: null, parentLabel: '' });
+    function newSub(parentNode) { dlgFolder.parent = parentNode; dlgFolder.parentLabel = parentNode ? folderPath(parentNode).join(' / ') : path.value.join(' / '); dlgFolder.name = ''; dlgFolder.show = true; }
+    function confirmFolder() { const n = dlgFolder.name.trim(); if (!n) return; const target = dlgFolder.parent || cur.value; if (!target.folders) target.folders = []; target.folders.push({ name: n, time: now(), folders: [], files: [] }); ElMessage.success('文件夹已创建：' + dlgFolder.parentLabel); dlgFolder.show = false; }
+    const dlgRename = reactive({ show: false, kind: 'folder', node: null, name: '' });
+    function renameFolder(node) { dlgRename.kind = 'folder'; dlgRename.node = node; dlgRename.name = node.name; dlgRename.show = true; }
+    function confirmRename() { const n = dlgRename.name.trim(); if (!n) return; if (dlgRename.kind === 'folder') { const old = dlgRename.node.name; dlgRename.node.name = n; if (path.value.includes(old)) { const idx = path.value.indexOf(old); path.value = [...path.value.slice(0, idx), n, ...path.value.slice(idx + 1)]; } } else { const i = (cur.value.files || []).findIndex(x => x.name === dlgRename.node.name); if (i >= 0) cur.value.files[i].name = n; } ElMessage.success('已重命名'); dlgRename.show = false; }
+    async function delFolder(node, fpath) { try { await ElMessageBox.confirm(`确定删除文件夹「${node.name}」吗？其下内容一并删除。`, '删除确认', { type: 'warning' }); } catch (e) { return; } const parentPath = fpath.slice(0, -1); const parent = findNode(parentPath); const i = (parent.folders || []).indexOf(node); if (i >= 0) parent.folders.splice(i, 1); const j = path.value.indexOf(node.name); if (j > 0) path.value = path.value.slice(0, j); ElMessage.success('文件夹已删除'); }
+    function renameFile(fl) { dlgRename.kind = 'file'; dlgRename.node = fl; dlgRename.name = fl.name; dlgRename.show = true; }
+    async function delFile(fl) { try { await ElMessageBox.confirm(`确定删除文件「${fl.name}」吗？`, '删除确认', { type: 'warning' }); } catch (e) { return; } const i = (cur.value.files || []).findIndex(x => x.name === fl.name); if (i >= 0) cur.value.files.splice(i, 1); ElMessage.success('文件已删除'); }
+
+    // 文件增删改查
+    const dlgFile = reactive({ show: false, name: '', type: 'txt' });
+    function openCreateFile() { dlgFile.name = ''; dlgFile.type = 'txt'; dlgFile.show = true; }
+    function confirmFile() {
+      let n = dlgFile.name.trim(); if (!n) return;
+      const m = n.match(/\.(txt|md)$/i);          // 用户直接输入了后缀
+      const ext = m ? m[1].toLowerCase() : dlgFile.type;
+      if (!m) n = n + '.' + ext;
+      cur.value.files.push({ name: n, type: ext, size: '0 KB', time: now(), content: ext === 'md' ? '# ' + n.replace(/\.[^.]+$/, '') : '（新文件，等待编辑内容）' });
+      ElMessage.success('文件已创建：' + n); dlgFile.show = false;
+    }
+
+    // 内容视图：查看/编辑占满右侧卡片（不再是弹窗）
+    const contentMode = ref('list');   // 'list' | 'view' | 'edit'
+    const contentFile = ref(null);
+    const editContent = ref('');
+    function openPreview(fl) { contentMode.value = 'view'; contentFile.value = fl; }
+    function openEdit(fl) { contentMode.value = 'edit'; contentFile.value = fl; editContent.value = fl.content; }
+    function openEditFromView() { openEdit(contentFile.value); }
+    function saveEdit() { contentFile.value.content = editContent.value; ElMessage.success('已保存：' + contentFile.value.name); contentMode.value = 'list'; }
+    function backToList() { contentMode.value = 'list'; }
+    // 编辑区 Tab 键插入 4 空格缩进（默认会跳出文本框）
+    function onTabKey(e) {
+      const ta = e.target; const s = ta.selectionStart, en = ta.selectionEnd;
+      editContent.value = editContent.value.slice(0, s) + '    ' + editContent.value.slice(en);
+      requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = s + 4; });
+    }
+
+    function download(fl) { ElMessage({ message: '（静态预览）下载：' + fl.name, type: 'info' }); }
+
+    const dlgMove = reactive({ show: false, file: null, target: '' });
+    function openMove(fl) { dlgMove.file = fl; dlgMove.target = ''; dlgMove.show = true; }
+    function confirmMove() { if (!dlgMove.target) { ElMessage.warning('请选择目标文件夹'); return; } const i = (cur.value.files || []).findIndex(x => x.name === dlgMove.file.name); if (i >= 0) cur.value.files.splice(i, 1); findNode(dlgMove.target.split('/')).files.push(dlgMove.file); ElMessage.success('已移动到 ' + dlgMove.target); dlgMove.show = false; }
+
+    const fileInput = ref(null);
+    function triggerUpload() { fileInput.value.click(); }
+    function triggerUploadFolder() { ElMessage('（静态预览）整夹上传在真实环境通过 <input webkitdirectory> 支持'); }
+    function onPickFiles(e) { const files = Array.from(e.target.files || []); files.forEach(f => { const isMd = /\.md$/i.test(f.name); const type = isMd ? 'md' : 'txt'; cur.value.files.push({ name: f.name, type, size: (f.size / 1024).toFixed(1) + ' KB', time: now(), content: type === 'md' ? '# ' + f.name.replace(/\.[^.]+$/, '') : '（上传文件内容，真实环境读取本地文件）' }); }); ElMessage.success(`已上传 ${files.length} 个文件到「${path.value.join(' / ')}」`); e.target.value = ''; }
+
+    function renderMd(text) {
+      const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      let t = esc(text || '');
+      t = t.replace(/^```([\s\S]*?)```$/gm, (m, c) => '<pre>' + c.replace(/</g, '&lt;') + '</pre>');
+      t = t.replace(/^### (.*)$/gm, '<h3>$1</h3>').replace(/^## (.*)$/gm, '<h2>$1</h2>').replace(/^# (.*)$/gm, '<h1>$1</h1>');
+      t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>');
+      t = t.replace(/^> (.*)$/gm, '<blockquote>$1</blockquote>');
+      t = t.replace(/^[-*] (.*)$/gm, '<li>$1</li>');
+      t = t.replace(/\n/g, '<br>');
+      return t;
+    }
+    function now() { const d = new Date(); const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+    function toast(m) { ElMessage(m); }
+
+    return { root, path, cur, isRoot, items, folderItems, fileItems, allFolders, visibleFolders, folderQuery, enter, toggle, newSub, confirmFolder, dlgFolder, dlgRename, renameFolder, confirmRename, renameFile, delFolder, delFile, dlgFile, openCreateFile, confirmFile, contentMode, contentFile, editContent, openPreview, openEdit, openEditFromView, saveEdit, backToList, onTabKey, download, dlgMove, openMove, confirmMove, fileInput, triggerUpload, triggerUploadFolder, onPickFiles, renderMd, toast };
+  },
+  template: document.getElementById('app').innerHTML
+});
+app.use(ElementPlus);
+app.use(ElementPlusIconsVue);
+app.mount('#app');
+document.getElementById('app').style.display = '';
+</script>
+</body>
+</html>

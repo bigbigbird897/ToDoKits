@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工作笔记 · 静态预览 v2</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%236f5cf0'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='white'%3E笔%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.7.8/dist/index.css">
+<style>
+  :root {
+    --el-color-primary: #6f5cf0;
+    --el-color-primary-light-3: #8f80f4;
+    --el-color-primary-light-5: #a89cf7;
+    --el-color-primary-light-7: #c4bcfb;
+    --el-color-primary-light-8: #d6d1fc;
+    --el-color-primary-light-9: #e9e6fe;
+    --el-color-primary-dark-2: #5a4ac0;
+    --td-bg: #faf6ef; --td-card: #fff; --td-text: #3a3a3a; --td-muted: #8a8a8a; --td-border: #f0ece3;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--td-bg); color: var(--td-text); font-family: "PingFang SC","Microsoft YaHei",system-ui,sans-serif; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 20px 16px 40px; }
+  .view-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+  .page-title { font-size: 22px; font-weight: 700; }
+  .page-desc { font-size: 14px; color: var(--td-muted); margin-top: 4px; }
+  .workspace { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
+  @media (max-width: 768px) { .workspace { grid-template-columns: 1fr; } }
+  .card { background: var(--td-card); border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.05); overflow: hidden; }
+  .card-head { padding: 12px 14px; border-bottom: 1px solid var(--td-border); font-weight: 600; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+  .card-body { padding: 10px 12px; }
+  .breadcrumb { padding: 0 14px 12px; border-bottom: 1px solid var(--td-border); font-size: 14px; color: #6b6b6b; }
+  .breadcrumb .crumb { cursor: pointer; color: var(--el-color-primary); }
+  .breadcrumb .sep { margin: 0 6px; color: #c0c0c0; }
+  /* ===== 左侧树 ===== */
+  .tree-tools { display: flex; gap: 6px; }
+  .tree-zone { max-height: 560px; overflow-y: auto; }
+  .tree-node-row { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 6px 6px; border-radius: 8px; font-size: 14px; }
+  .tree-node-row:hover { background: var(--el-color-primary-light-9); }
+  .tree-node-row.active { background: var(--el-color-primary-light-8); color: var(--el-color-primary-dark-2); font-weight: 600; }
+  .tree-caret { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; color: #aaa; flex-shrink: 0; transition: transform .2s; }
+  .tree-caret.open { transform: rotate(90deg); }
+  .tree-caret.empty { visibility: hidden; }
+  .tree-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tree-count { color: var(--td-muted); font-size: 12px; flex-shrink: 0; }
+  .tree-fops { display: flex; gap: 2px; opacity: 0; flex-shrink: 0; transition: opacity .15s; }
+  .tree-node-row:hover .tree-fops { opacity: 1; }
+  /* ===== 右侧列表 ===== */
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .cur-tag { font-size: 12px; color: var(--td-muted); font-weight: 400; }
+  .file-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #f6f2ea; cursor: pointer; border-radius: 8px; }
+  .file-row:hover { background: #fbf8f2; }
+  .file-row.folder-row:hover { background: var(--el-color-primary-light-9); }
+  .file-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .file-icon.folder { background: #fff2cc; color: #e6a23c; }
+  .file-icon.txt { background: #e8f4ff; color: #409eff; }
+  .file-icon.md { background: #eafbea; color: #67c23a; }
+  .file-main { flex: 1; min-width: 0; }
+  .file-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-meta { font-size: 12px; color: var(--td-muted); }
+  .file-ops { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity .2s; }
+  .file-row:hover .file-ops { opacity: 1; }
+  .file-badge { font-size: 11px; padding: 1px 6px; border-radius: 6px; color: #fff; flex-shrink: 0; }
+  .file-badge.t { background: #409eff; } .file-badge.m { background: #67c23a; }
+  .empty { text-align: center; color: var(--td-muted); padding: 40px 0; font-size: 14px; }
+  .note { font-size: 12px; color: #b0a88f; margin-top: 12px; text-align: center; }
+  .md-body { font-size: 14px; line-height: 1.7; }
+  .md-body h1,.md-body h2,.md-body h3 { margin: 10px 0 6px; }
+  .md-body pre { background: #f6f4ef; padding: 10px; border-radius: 8px; overflow: auto; font-size: 12px; }
+  .md-body code { background: #f6f4ef; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .md-body ul,.md-body ol { padding-left: 22px; }
+  .md-body blockquote { border-left: 3px solid #ddd; padding-left: 10px; color: #777; margin: 6px 0; }
+  .txt-body { white-space: pre-wrap; font-size: 13px; line-height: 1.8; color: #4a4a4a; }
+  @media (max-width: 640px) { .page-desc,.breadcrumb,.tree-node-row,.file-name,.file-meta { font-size: 14px; } }
+</style>
+</head>
+<body>
+<div id="app" v-cloak style="display:none">
+  <div class="page">
+    <div class="view-head">
+      <div>
+        <div class="page-title">工作笔记</div>
+        <div class="page-desc">左侧管理文件夹，文件在所在文件夹内增删改查，支持 txt / md 在线查看与编辑。</div>
+      </div>
+      <div><el-button plain @click="toast('已刷新（静态预览，数据在内存）')">刷新</el-button></div>
+    </div>
+
+    <div class="workspace">
+      <!-- ===== 左侧：文件夹树（增删改查） ===== -->
+      <div class="card">
+        <div class="card-head">
+          <span>文件夹</span>
+          <el-button size="small" type="primary" plain @click="newSub(null)"><el-icon style="margin-right:3px"><FolderAdd/></el-icon>新建</el-button>
+        </div>
+        <div class="card-body">
+          <el-input v-model="folderQuery" placeholder="搜索文件夹…" clearable size="default" style="margin-bottom:8px">
+            <template #prefix><el-icon><Search/></el-icon></template>
+          </el-input>
+          <div class="tree-zone">
+            <!-- 根节点 -->
+            <div class="tree-node-row" :class="{active: isRoot}" @click="enter([])">
+              <span class="tree-caret empty"></span>
+              <el-icon><FolderOpened/></el-icon>
+              <span class="tree-name">全部文件</span>
+              <span class="tree-count">{{ root.files.length }}</span>
+            </div>
+            <!-- 可见文件夹节点（展开平铺） -->
+            <div v-for="f in visibleFolders" :key="f.key" class="tree-node-row"
+                 :class="{active: f.active}"
+                 :style="{'padding-left': (6 + f.level*18) + 'px'}">
+              <span class="tree-caret" :class="{open: f.open, empty: !f.hasChildren}" @click.stop="toggle(f.node)">
+                <el-icon :size="12"><CaretRight/></el-icon>
+              </span>
+              <el-icon @click.stop="enter(f.pathArr)"><Folder/></el-icon>
+              <span class="tree-name" @click="enter(f.pathArr)">{{ f.node.name }}</span>
+              <span class="tree-count">（{{ f.node.files.length }}）</span>
+              <span class="tree-fops" @click.stop>
+                <el-button link size="small" title="新建子文件夹" @click="newSub(f.node)">+</el-button>
+                <el-button link size="small" title="重命名" @click="renameFolder(f.node)">改</el-button>
+                <el-button link type="danger" size="small" title="删除" @click="delFolder(f.node, f.pathArr)">删</el-button>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 右侧：当前文件夹内容 ===== -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <span>当前文件夹</span>
+            <span class="cur-tag"> — {{ path.join(' / ') }}</span>
+          </div>
+          <el-tag size="small" effect="plain">{{ items }} 项</el-tag>
+        </div>
+        <div class="card-body">
+          <!-- 面包屑 -->
+          <div class="breadcrumb" style="border:none;padding:0 0 12px">
+            <template v-for="(c,i) in path" :key="c">
+              <span class="sep" v-if="i>0">/</span>
+              <span class="crumb" @click="enter(path.slice(0,i+1))">{{ c }}</span>
+            </template>
+          </div>
+          <!-- 工具栏：均作用于当前文件夹 -->
+          <div class="toolbar">
+            <el-button type="primary" @click="newSub(null)"><el-icon style="margin-right:4px"><FolderAdd/></el-icon>新建文件夹</el-button>
+            <el-button type="primary" plain @click="openCreateFile"><el-icon style="margin-right:4px"><DocumentAdd/></el-icon>新建文件</el-button>
+            <el-button plain @click="triggerUpload"><el-icon style="margin-right:4px"><Upload/></el-icon>上传文件</el-button>
+            <el-button plain @click="triggerUploadFolder"><el-icon style="margin-right:4px"><UploadFilled/></el-icon>上传文件夹</el-button>
+            <input ref="fileInput" type="file" multiple hidden @change="onPickFiles">
+          </div>
+          <!-- 列表 -->
+          <div v-if="!items" class="empty">该文件夹为空：新建文件夹 / 新建文件 / 上传，或从左侧进入其它文件夹</div>
+          <template v-else>
+            <div class="file-row folder-row" v-for="fd in folderItems" :key="'f'+fd.name" @click="enter([...path, fd.name])">
+              <div class="file-icon folder"><el-icon :size="18"><Folder/></el-icon></div>
+              <div class="file-main">
+                <div class="file-name">{{ fd.name }}</div>
+                <div class="file-meta">文件夹 · {{ fd.files.length }} 个文件 · {{ fd.time }}</div>
+              </div>
+              <div class="file-ops" @click.stop>
+                <el-button link type="primary" size="small" @click="enter([...path, fd.name])">打开</el-button>
+                <el-button link type="primary" size="small" @click="renameFolder(fd)">重命名</el-button>
+                <el-button link type="danger" size="small" @click="delFolder(fd, [...path, fd.name])">删除</el-button>
+              </div>
+            </div>
+            <div class="file-row" v-for="fl in fileItems" :key="'x'+fl.name" @click="openPreview(fl)">
+              <div class="file-icon" :class="fl.type"><el-icon :size="18"><Document/></el-icon></div>
+              <span class="file-badge" :class="fl.type==='md'?'m':'t'">{{ fl.type==='md'?'MD':'TXT' }}</span>
+              <div class="file-main">
+                <div class="file-name">{{ fl.name }}</div>
+                <div class="file-meta">{{ fl.size }} · {{ fl.time }}</div>
+              </div>
+              <div class="file-ops" @click.stop>
+                <el-button link type="primary" size="small" @click="openPreview(fl)">查看</el-button>
+                <el-button link type="primary" size="small" @click="openEdit(fl)">编辑</el-button>
+                <el-button link type="primary" size="small" @click="renameFile(fl)">重命名</el-button>
+                <el-button link type="primary" size="small" @click="openMove(fl)">移动</el-button>
+                <el-button link @click="download(fl)">下载</el-button>
+                <el-button link type="danger" size="small" @click="delFile(fl)">删除</el-button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">※ 静态预览：数据保存在内存中，用于确认「工作笔记」的布局与交互。通过后再接入前后端。</div>
+
+    <!-- 新建文件夹（在当前文件夹 / 选中文件夹下） -->
+    <el-dialog v-model="dlgFolder.show" title="新建文件夹" width="380px">
+      <el-input v-model="dlgFolder.name" placeholder="文件夹名称" @keyup.enter="confirmFolder"/>
+      <div style="font-size:12px;color:var(--td-muted);margin-top:8px">将创建在：{{ dlgFolder.parentLabel }}</div>
+      <template #footer>
+        <el-button @click="dlgFolder.show=false">取消</el-button>
+        <el-button type="primary" @click="confirmFolder">创建</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 新建文件 -->
+    <el-dialog v-model="dlgFile.show" title="新建文件" width="380px">
+      <el-input v-model="dlgFile.name" placeholder="文件名（不含扩展名）" @keyup.enter="confirmFile"/>
+      <el-radio-group v-model="dlgFile.type" style="margin-top:12px">
+        <el-radio label="txt">TXT 纯文本</el-radio>
+        <el-radio label="md">Markdown</el-radio>
+      </el-radio-group>
+      <template #footer>
+        <el-button @click="dlgFile.show=false">取消</el-button>
+        <el-button type="primary" @click="confirmFile">创建</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑文件内容 -->
+    <el-dialog v-model="dlgEdit.show" :title="dlgEdit.file ? '编辑 · '+dlgEdit.file.name : ''" width="600px" top="6vh">
+      <el-input v-model="dlgEdit.content" type="textarea" :rows="14" placeholder="在此编辑内容"/>
+      <div style="font-size:12px;color:var(--td-muted);margin-top:6px">当前文件夹：{{ path.join(' / ') }}</div>
+      <template #footer>
+        <el-button @click="dlgEdit.show=false">取消</el-button>
+        <el-button type="primary" @click="saveEdit">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 查看预览 -->
+    <el-dialog v-model="dlgPreview.show" :title="dlgPreview.file ? dlgPreview.file.name : ''" width="640px" top="6vh">
+      <div class="md-body" v-if="dlgPreview.file && dlgPreview.file.type==='md'" v-html="renderMd(dlgPreview.file.content)"></div>
+      <div class="txt-body" v-else-if="dlgPreview.file && dlgPreview.file.type==='txt'">{{ dlgPreview.file.content }}</div>
+      <template #footer>
+        <el-button @click="dlgPreview.show=false">关闭</el-button>
+        <el-button type="primary" plain @click="openEdit(dlgPreview.file); dlgPreview.show=false">编辑</el-button>
+        <el-button type="primary" @click="download(dlgPreview.file)">下载</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 重命名（文件夹/文件共用） -->
+    <el-dialog v-model="dlgRename.show" :title="dlgRename.kind==='folder'?'重命名文件夹':'重命名文件'" width="380px">
+      <el-input v-model="dlgRename.name" placeholder="新名称" @keyup.enter="confirmRename"/>
+      <template #footer>
+        <el-button @click="dlgRename.show=false">取消</el-button>
+        <el-button type="primary" @click="confirmRename">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 移动文件 -->
+    <el-dialog v-model="dlgMove.show" title="移动文件到" width="400px">
+      <el-select v-model="dlgMove.target" placeholder="选择目标文件夹" style="width:100%">
+        <el-option label="全部文件（根目录）" value="全部文件"/>
+        <el-option v-for="f in allFolders" :key="f" :label="f" :value="f"/>
+      </el-select>
+      <template #footer>
+        <el-button @click="dlgMove.show=false">取消</el-button>
+        <el-button type="primary" @click="confirmMove">移动</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-plus@2.7.8/dist/index.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>
+<script>
+const { createApp, ref, computed, reactive } = Vue;
+const { ElMessage, ElMessageBox } = ElementPlus;
+
+const root = {
+  name: '全部文件', time: '—', folders: [
+    { name: '工作', time: '2026-10-07', folders: [
+        { name: '项目A', time: '2026-10-06', folders: [], files: [
+          { name: '接口设计.md', type: 'md', size: '4.5 KB', time: '2026-10-06 10:00', content: '# 接口设计\n\n- POST /api/notes/folder\n- POST /api/notes/file\n- GET  /api/notes/list' },
+          { name: '排期表.txt', type: 'txt', size: '0.3 KB', time: '2026-10-02 09:00', content: '10.07 静态预览\n10.08 前端界面\n10.09 后端接口\n10.10 联调' }
+        ] }
+      ], files: [
+        { name: '需求文档.md', type: 'md', size: '3.2 KB', time: '2026-10-05 14:10', content: '# 需求文档\n\n## 功能清单\n- 待办事项 CRUD\n- 数据统计\n- 工作笔记：文件夹 / 文件管理' },
+        { name: '会议记录.txt', type: 'txt', size: '0.8 KB', time: '2026-10-04 11:00', content: '周会记录：\n- 讨论工作笔记静态原型\n- 确认支持 txt / md' }
+      ] },
+    { name: '个人', time: '2026-10-03', folders: [], files: [
+        { name: '读书笔记.md', type: 'md', size: '2.1 KB', time: '2026-10-03 22:15', content: '# 读书笔记\n\n正在读《设计心理学》。\n\n要点：\n- 可见性\n- 反馈\n- 心智模型' }
+      ] }
+  ], files: [
+    { name: '项目启动会纪要.md', type: 'md', size: '1.6 KB', time: '2026-10-07 09:30', content: '# 项目启动会纪要\n\n## 参与人\n- 张三、李四、王五\n\n## 结论\n> 本周完成需求评审，下周进入开发。\n\n```\n阶段：需求 -> 设计 -> 开发\n```' },
+    { name: '待办清单.txt', type: 'txt', size: '0.4 KB', time: '2026-10-06 18:20', content: '1. 更新部署脚本\n2. 修复登录暗色主题\n3. 整理工作笔记需求\n4. 写周报' }
+  ]
+};
+
+function findNode(pathArr) {
+  let node = root;
+  for (let i = 1; i < pathArr.length; i++) { node = (node.folders || []).find(f => f.name === pathArr[i]); if (!node) return null; }
+  return node;
+}
+function allFolderPaths(node, base) {
+  const out = [];
+  (node.folders || []).forEach(f => { const p = base + '/' + f.name; out.push(p); if (f.folders && f.folders.length) out.push(...allFolderPaths(f, p)); });
+  return out;
+}
+const ALL_FOLDERS = allFolderPaths(root, '全部文件');
+
+const app = createApp({
+  setup() {
+    const path = ref(['全部文件']);
+    const cur = computed(() => findNode(path.value));
+    const isRoot = computed(() => path.value.length === 1);
+    const items = computed(() => (cur.value.folders?.length || 0) + (cur.value.files?.length || 0));
+    const folderItems = computed(() => (cur.value.folders || []).map(f => ({ name: f.name, time: f.time, files: f.files })));
+    const fileItems = computed(() => cur.value.files || []);
+    const allFolders = computed(() => ALL_FOLDERS.filter(p => p !== path.value.join('/')));
+
+    // 展开状态 + 文件夹搜索过滤
+    const expanded = reactive(new Set());
+    const folderQuery = ref('');
+    // 判断某文件夹或其任一后代是否命中关键字
+    function hasMatch(node, q) { if ((node.name || '').includes(q)) return true; return (node.folders || []).some(c => hasMatch(c, q)); }
+    const visibleFolders = computed(() => {
+      const q = folderQuery.value.trim();
+      const out = [];
+      if (!q) {
+        function walk(node, pathArr, level) {
+          (node.folders || []).forEach(f => {
+            const fpath = [...pathArr, f.name];
+            const hasChildren = (f.folders && f.folders.length) > 0;
+            out.push({ node: f, pathArr: fpath, level, hasChildren, open: expanded.has(fpath.join('/')), active: path.value.join('/') === fpath.join('/'), key: fpath.join('/') });
+            if (expanded.has(fpath.join('/')) && hasChildren) walk(f, fpath, level + 1);
+          });
+        }
+        walk(root, ['全部文件'], 1);
+      } else {
+        // 查询：只显示命中或含命中后代的节点，并自动展开命中路径
+        function matchWalk(node, pathArr, level) {
+          (node.folders || []).forEach(f => {
+            const fpath = [...pathArr, f.name];
+            const selfHit = (f.name || '').includes(q);
+            const childHit = (f.folders || []).some(c => hasMatch(c, q));
+            if (selfHit || childHit) {
+              out.push({ node: f, pathArr: fpath, level, hasChildren: (f.folders && f.folders.length) > 0, open: true, active: path.value.join('/') === fpath.join('/'), key: fpath.join('/') });
+              if (childHit) matchWalk(f, fpath, level + 1);
+            }
+          });
+        }
+        matchWalk(root, ['全部文件'], 1);
+      }
+      return out;
+    });
+
+    function enter(p) { path.value = Array.isArray(p) ? p.slice() : p; }
+    function toggle(node) { const k = folderPath(node); if (expanded.has(k)) expanded.delete(k); else expanded.add(k); }
+    function folderPath(node) { // 反查节点路径
+      function find(n, base) { if (n.folders) { const i = n.folders.indexOf(node); if (i >= 0) return [...base, node.name]; for (const c of n.folders) { const r = find(c, [...base, c.name]); if (r) return r; } } return null; }
+      return find(root, ['全部文件']) || ['全部文件'];
+    }
+
+    // ---- 文件夹增删改查 ----
+    const dlgFolder = reactive({ show: false, name: '', parent: null, parentLabel: '' });
+    function newSub(parentNode) {
+      dlgFolder.parent = parentNode;
+      dlgFolder.parentLabel = parentNode ? folderPath(parentNode).join(' / ') : path.value.join(' / ');
+      dlgFolder.name = ''; dlgFolder.show = true;
+    }
+    function confirmFolder() {
+      const n = dlgFolder.name.trim(); if (!n) return;
+      const target = dlgFolder.parent || cur.value;
+      if (!target.folders) target.folders = [];
+      target.folders.push({ name: n, time: now(), folders: [], files: [] });
+      ElMessage.success('文件夹已创建：' + (dlgFolder.parentLabel));
+      dlgFolder.show = false;
+    }
+    const dlgRename = reactive({ show: false, kind: 'folder', node: null, name: '' });
+    function renameFolder(node) { dlgRename.kind = 'folder'; dlgRename.node = node; dlgRename.name = node.name; dlgRename.show = true; }
+    function confirmRename() {
+      const n = dlgRename.name.trim(); if (!n) return;
+      if (dlgRename.kind === 'folder') {
+        const old = dlgRename.node.name; dlgRename.node.name = n;
+        // 若当前正位于该文件夹或其子路径，同步更新面包屑
+        if (path.value.includes(old)) { const idx = path.value.indexOf(old); path.value = [...path.value.slice(0, idx), n, ...path.value.slice(idx + 1)]; }
+      } else {
+        const i = (cur.value.files || []).findIndex(x => x.name === dlgRename.node.name);
+        if (i >= 0) cur.value.files[i].name = n;
+      }
+      ElMessage.success('已重命名'); dlgRename.show = false;
+    }
+    async function delFolder(node, fpath) {
+      try { await ElMessageBox.confirm(`确定删除文件夹「${node.name}」吗？其下内容一并删除。`, '删除确认', { type: 'warning' }); } catch (e) { return; }
+      const parentPath = fpath.slice(0, -1); const parent = findNode(parentPath);
+      const i = (parent.folders || []).indexOf(node); if (i >= 0) parent.folders.splice(i, 1);
+      // 若删的是当前目录或其祖先，回根
+      const j = path.value.indexOf(node.name); if (j > 0) path.value = path.value.slice(0, j);
+      ElMessage.success('文件夹已删除');
+    }
+    // 重命名/删除 文件
+    function renameFile(fl) { dlgRename.kind = 'file'; dlgRename.node = fl; dlgRename.name = fl.name; dlgRename.show = true; }
+    async function delFile(fl) {
+      try { await ElMessageBox.confirm(`确定删除文件「${fl.name}」吗？`, '删除确认', { type: 'warning' }); } catch (e) { return; }
+      const i = (cur.value.files || []).findIndex(x => x.name === fl.name); if (i >= 0) cur.value.files.splice(i, 1);
+      ElMessage.success('文件已删除');
+    }
+
+    // ---- 文件增删改查 ----
+    const dlgFile = reactive({ show: false, name: '', type: 'txt' });
+    function openCreateFile() { dlgFile.name = ''; dlgFile.type = 'txt'; dlgFile.show = true; }
+    function confirmFile() { const n = dlgFile.name.trim(); if (!n) return; cur.value.files.push({ name: n + '.' + dlgFile.type, type: dlgFile.type, size: '0 KB', time: now(), content: dlgFile.type === 'md' ? '# ' + n : '（新文件，等待编辑内容）' }); ElMessage.success('文件已创建'); dlgFile.show = false; }
+
+    const dlgEdit = reactive({ show: false, file: null, content: '' });
+    function openEdit(fl) { dlgEdit.file = fl; dlgEdit.content = fl.content; dlgEdit.show = true; }
+    function saveEdit() { dlgEdit.file.content = dlgEdit.content; ElMessage.success('已保存：' + dlgEdit.file.name); dlgEdit.show = false; }
+
+    const dlgPreview = reactive({ show: false, file: null });
+    function openPreview(fl) { dlgPreview.file = fl; dlgPreview.show = true; }
+    function download(fl) { ElMessage({ message: '（静态预览）下载：' + fl.name, type: 'info' }); }
+
+    const dlgMove = reactive({ show: false, file: null, target: '' });
+    function openMove(fl) { dlgMove.file = fl; dlgMove.target = ''; dlgMove.show = true; }
+    function confirmMove() { if (!dlgMove.target) { ElMessage.warning('请选择目标文件夹'); return; } const i = (cur.value.files || []).findIndex(x => x.name === dlgMove.file.name); if (i >= 0) cur.value.files.splice(i, 1); findNode(dlgMove.target.split('/')).files.push(dlgMove.file); ElMessage.success('已移动到 ' + dlgMove.target); dlgMove.show = false; }
+
+    // 上传
+    const fileInput = ref(null);
+    function triggerUpload() { fileInput.value.click(); }
+    function triggerUploadFolder() { ElMessage('（静态预览）整夹上传在真实环境通过 <input webkitdirectory> 支持'); }
+    function onPickFiles(e) { const files = Array.from(e.target.files || []); files.forEach(f => { const isMd = /\.md$/i.test(f.name); const type = isMd ? 'md' : 'txt'; cur.value.files.push({ name: f.name, type, size: (f.size / 1024).toFixed(1) + ' KB', time: now(), content: type === 'md' ? '# ' + f.name.replace(/\.[^.]+$/, '') : '（上传文件内容，真实环境读取本地文件）' }); }); ElMessage.success(`已上传 ${files.length} 个文件到「${path.value.join(' / ')}」`); e.target.value = ''; }
+
+    function renderMd(text) {
+      const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      let t = esc(text || '');
+      t = t.replace(/^```([\s\S]*?)```$/gm, (m, c) => '<pre>' + c.replace(/</g, '&lt;') + '</pre>');
+      t = t.replace(/^### (.*)$/gm, '<h3>$1</h3>').replace(/^## (.*)$/gm, '<h2>$1</h2>').replace(/^# (.*)$/gm, '<h1>$1</h1>');
+      t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>');
+      t = t.replace(/^> (.*)$/gm, '<blockquote>$1</blockquote>');
+      t = t.replace(/^[-*] (.*)$/gm, '<li>$1</li>');
+      t = t.replace(/\n/g, '<br>');
+      return t;
+    }
+    function now() { const d = new Date(); const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+    function toast(m) { ElMessage(m); }
+
+    return { root, path, cur, isRoot, items, folderItems, fileItems, allFolders, visibleFolders, expanded, folderQuery, enter, toggle, newSub, confirmFolder, dlgFolder, dlgRename, renameFolder, confirmRename, renameFile, delFolder, delFile, dlgFile, openCreateFile, confirmFile, dlgEdit, openEdit, saveEdit, dlgPreview, openPreview, download, dlgMove, openMove, confirmMove, fileInput, triggerUpload, triggerUploadFolder, onPickFiles, renderMd, toast };
+  },
+  template: document.getElementById('app').innerHTML
+});
+app.use(ElementPlus);
+app.use(ElementPlusIconsVue);
+app.mount('#app');
+document.getElementById('app').style.display = '';
+</script>
+</body>
+</html>
