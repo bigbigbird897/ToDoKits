@@ -122,3 +122,4 @@ dotnet run --project ToDoKits.Controllers   # http://localhost:5000
 | 2026-09-27 | **CI 工作流**：参考 NetworkKits release.yml 编写 `.github/workflows/release.yml`（tag 触发 / checkout submodules / 前端 npm build / 后端 dotnet publish linux+win / 打包 Release）。 |
 | 2026-09-27 | **Android**：本机无 Java/Android SDK，未本地构建；后续可将前端界面以 WebView 嵌入安卓应用，数据库可选本地 SQLite 或复用后端 API，待接入 Android 工具链后再交付工程。 |
 | 2026-09-28 | **FrontEnd 移动端 UI 优化**：顶栏导出改图标（去拥挤）、正文/表单字号加大（≥15/16px 防 iOS 聚焦缩放）、筛选控件堆叠全宽、表格横向滚动不截断；移除侧栏「生活助手」品牌标识。 |
+| 2026-10-18 | **笔记页新增文件内容检索**：WorkNotes.vue 增加跨文件夹全文检索（按「文件名 + 正文 content」命中，结果展示所属路径与命中高亮片段、点击直达；输入防抖自动搜索），store 新增 `searchWorkFiles`；前端 v1.0.14。 |
