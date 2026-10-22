@@ -124,3 +124,4 @@ dotnet run --project ToDoKits.Controllers   # http://localhost:5000
 | 2026-09-28 | **FrontEnd 移动端 UI 优化**：顶栏导出改图标（去拥挤）、正文/表单字号加大（≥15/16px 防 iOS 聚焦缩放）、筛选控件堆叠全宽、表格横向滚动不截断；移除侧栏「生活助手」品牌标识。 |
 | 2026-10-18 | **笔记页新增文件内容检索**：WorkNotes.vue 增加跨文件夹全文检索（按「文件名 + 正文 content」命中，结果展示所属路径与命中高亮片段、点击直达；输入防抖自动搜索），store 新增 `searchWorkFiles`；前端 v1.0.14。 |
 | 2026-10-22 | **所有编辑保存操作补齐成功提示**：store 层 `updateTodo/addHabit/updateHabit/addQuote/updateQuote/addNote/updateNote/addDiary/updateDiary/addHabitCat` 原仅失败时提示，现成功保存后统一 `ElMessage.success`（待办/习惯/名言/读后感笔记/日记/习惯分类），点击保存后明确告知是否保存成功；前端 v1.0.15。 |
+| 2026-10-22 | **所有删除操作增加二次确认弹窗**：待办/待办分类、习惯/习惯分类、名言、读后感文件夹/笔记、日记删除前均弹窗确认，未确认不执行；工作笔记原有确认保留；前端 v1.0.16。 |
